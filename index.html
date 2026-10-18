@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0B57D0">
+<title>Telefone da Família</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Google Sans',Roboto,Arial,sans-serif;background:#fff;color:#202124;overflow:hidden;height:100vh;height:100dvh}
+button{font-family:inherit}
+.screen{position:absolute;inset:0;background:#fff;display:flex;flex-direction:column;transition:transform .28s ease}
+.screen.hidden{transform:translateX(100%)}
+.login{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.login-icon{width:80px;height:80px;background:#E8F0FE;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:20px}
+.login h1{font-size:28px;font-weight:400;color:#202124;margin-bottom:8px}
+.login .sub{font-size:14px;color:#5F6368;text-align:center;max-width:300px;line-height:1.4;margin-bottom:28px}
+.input-wrap{width:100%;max-width:340px;margin-bottom:14px}
+.input-wrap input{width:100%;height:56px;border:1px solid #DADCE0;border-radius:28px;padding:0 20px;font-size:16px;outline:none;background:#fff;color:#202124}
+.input-wrap input:focus{border-color:#0B57D0;box-shadow:0 0 0 1px #0B57D0}
+.btn-primary{width:100%;max-width:340px;height:56px;background:#0B57D0;color:#fff;border:none;border-radius:28px;font-size:16px;font-weight:500;cursor:pointer;transition:all .2s;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{opacity:.5;pointer-events:none}
+.hint{margin-top:16px;font-size:12px;color:#5F6368;text-align:center;max-width:340px;line-height:1.4}
+.hint b{color:#202124}
+.header{height:64px;display:flex;align-items:center;padding:0 16px;gap:10px;border-bottom:1px solid #E8EAED;background:#fff}
+.search{flex:1;height:44px;background:#F1F3F4;border-radius:24px;display:flex;align-items:center;padding:0 14px;gap:8px}
+.search input{flex:1;background:transparent;border:none;outline:none;font-size:15px}
+.icon-btn{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:transparent;border:none;font-size:18px}
+.icon-btn:active{background:#F1F3F4}
+.avatar{width:40px;height:40px;border-radius:50%;background:#E8F0FE;color:#0B57D0;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:16px;flex-shrink:0}
+.avatar.lg{width:72px;height:72px;font-size:26px}
+.avatar.xl{width:120px;height:120px;font-size:48px}
+.status-bar{padding:8px 16px;font-size:12px;color:#137333;background:#E6F4EA;display:flex;align-items:center;gap:6px;border-bottom:1px solid #CEEAD6}
+.dot{width:8px;height:8px;border-radius:50%;background:#34A853;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.list{flex:1;overflow-y:auto}
+.empty{padding:60px 24px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.empty-icon{width:80px;height:80px;border-radius:50%;background:#F1F3F4;display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:16px}
+.empty h3{font-size:20px;font-weight:400;margin-bottom:8px}
+.empty p{font-size:14px;color:#5F6368;max-width:280px;margin-bottom:20px}
+.contact{height:72px;display:flex;align-items:center;padding:0 16px;gap:12px;cursor:pointer}
+.contact:active{background:#F8F9FA}
+.c-info{flex:1;min-width:0}
+.c-name{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-sub{font-size:13px;color:#5F6368;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.call-btn{width:48px;height:48px;border-radius:50%;background:#E8F0FE;color:#0B57D0;display:flex;align-items:center;justify-content:center;border:none;font-size:20px}
+.fab{position:absolute;right:20px;bottom:20px;width:56px;height:56px;border-radius:16px;background:#0B57D0;color:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 12px rgba(11,87,208,.3)}
+.call-screen{background:#202124;color:#fff;align-items:center;justify-content:space-between;padding:40px 24px 32px}
+.call-top{display:flex;flex-direction:column;align-items:center;gap:12px}
+.call-name{font-size:26px;font-weight:400;text-align:center}
+.call-status{font-size:14px;color:#BDC1C6}
+.call-timer{font-size:16px;color:#E8EAED;margin-top:4px;letter-spacing:1px}
+.call-avatar{width:120px;height:120px;border-radius:50%;background:#3C4043;color:#fff;display:flex;align-items:center;justify-content:center;font-size:48px;position:relative}
+.pulse{position:absolute;inset:-10px;border:2px solid rgba(255,255,255,.15);border-radius:50%;animation:ping 2s infinite}
+@keyframes ping{0%{transform:scale(.85);opacity:1}100%{transform:scale(1.35);opacity:0}}
+.actions{display:flex;gap:28px;align-items:center}
+.abtn{width:64px;height:64px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:none;font-size:24px}
+.abtn span{font-size:10px;margin-top:2px}
+.decline{background:#FCE8E6;color:#C5221F}
+.accept{background:#34A853;color:#fff}
+.end{background:#EA4335;color:#fff;width:72px;height:72px;font-size:28px}
+.mute{background:#3C4043;color:#fff}
+.toast{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);background:#3C4043;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:100;max-width:90%;text-align:center;animation:toastIn .25s}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+.modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;z-index:50}
+.modal{width:100%;background:#fff;border-radius:28px 28px 0 0;padding:24px;max-height:90vh;overflow:auto;animation:slideUp .28s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal h2{font-size:22px;font-weight:400;margin-bottom:12px}
+.field{margin-bottom:14px}
+.field label{font-size:11px;color:#5F6368;text-transform:uppercase;letter-spacing:.5px;margin-left:12px;display:block;margin-bottom:4px}
+.field input{width:100%;height:52px;border:1px solid #DADCE0;border-radius:12px;padding:0 16px;font-size:15px;outline:none}
+.field input:focus{border-color:#0B57D0}
+.row{display:flex;gap:10px;margin-top:18px}
+.btn{flex:1;height:44px;border-radius:22px;border:none;font-size:14px;font-weight:500}
+.btn-o{border:1px solid #DADCE0;background:#fff;color:#0B57D0}
+.btn-f{background:#0B57D0;color:#fff}
+</style>
+</head>
+<body>
+<div id="loginScreen" class="screen">
+  <div class="login">
+    <div class="login-icon">📞</div>
+    <h1>Telefone da Família</h1>
+    <div class="sub">Digite seu Gmail ou @ para receber chamadas mesmo com app fechado</div>
+    <div class="input-wrap"><input id="loginInput" placeholder="seu@gmail.com ou @usuario" autocomplete="email" inputmode="email"></div>
+    <div class="input-wrap"><input id="nameInput" placeholder="Seu nome (ex: Miguel)"></div>
+    <button id="loginBtn" class="btn-primary">Entrar</button>
+    <div class="hint">🔒 Fica salvo mesmo atualizando 300x. Só sai em Configurações &gt; Sair<br><span id="firebaseStatus" style="color:#5F6368">Conectando ao afrao-calls...</span><br><span id="debugLog" style="font-size:10px;color:#9AA0A6"></span></div>
+  </div>
+</div>
+
+<div id="listScreen" class="screen hidden">
+  <div class="header">
+    <div class="search"><span>🔍</span><input placeholder="Pesquisar família" disabled></div>
+    <button class="icon-btn" id="configBtn">⚙️</button>
+    <div class="avatar" id="myAvatar">?</div>
+  </div>
+  <div class="status-bar"><span class="dot"></span><span id="statusText">Conectado • Pronto para receber chamadas</span></div>
+  <div id="contactsList" class="list"></div>
+  <div id="emptyState" class="empty">
+    <div class="empty-icon">👨‍👩‍👧‍👦</div>
+    <h3>Sua família aparecerá aqui</h3>
+    <p>Adicione familiares com o botão + para começar a ligar</p>
+    <button class="btn-primary" style="max-width:240px;height:48px" onclick="openAdd()">Adicionar primeiro familiar</button>
+  </div>
+  <button class="fab" onclick="openAdd()">+</button>
+  <div id="toast" style="display:none" class="toast"></div>
+</div>
+
+<div id="incomingScreen" class="screen hidden call-screen">
+  <div class="call-top">
+    <div class="call-avatar" id="incomingAvatar">?<div class="pulse"></div></div>
+    <div class="call-name" id="incomingName">Chamada...</div>
+    <div class="call-status" id="incomingSub">afrao-calls</div>
+  </div>
+  <div class="actions">
+    <button class="abtn decline" onclick="declineCall()"><span style="font-size:28px">✕</span><span>Recusar</span></button>
+    <button class="abtn accept" onclick="answerCall()"><span style="font-size:28px">📞</span><span>Atender</span></button>
+  </div>
+</div>
+
+<div id="callScreen" class="screen hidden call-screen">
+  <div class="call-top">
+    <div class="call-avatar" id="callAvatar">?</div>
+    <div class="call-name" id="callName">Ligando...</div>
+    <div class="call-status" id="callStatus">Ligando...</div>
+    <div class="call-timer" id="callTimer" style="display:none">00:00</div>
+  </div>
+  <div class="actions">
+    <button class="abtn mute" onclick="toggleMute()" id="muteBtn">🎤<span>Silenciar</span></button>
+    <button class="abtn end" onclick="endCall()">✕</button>
+    <button class="abtn mute">🔊<span>Viva-voz</span></button>
+  </div>
+</div>
+
+<div id="addModal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeAdd()">
+  <div class="modal">
+    <h2>Adicionar familiar</h2>
+    <div class="field"><label>Nome</label><input id="addName" placeholder="Ex: Mãe"></div>
+    <div class="field"><label>Gmail ou @</label><input id="addId" placeholder="mae@gmail.com ou @mae"></div>
+    <div class="row"><button class="btn btn-o" onclick="closeAdd()">Cancelar</button><button class="btn btn-f" onclick="saveFamily()">Adicionar</button></div>
+  </div>
+</div>
+
+<div id="configModal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeConfig()">
+  <div class="modal">
+    <h2>Configurações</h2>
+    <div style="display:flex;gap:12px;align-items:center;margin:16px 0">
+      <div class="avatar lg" id="configAvatar">?</div>
+      <div><div id="configName" style="font-weight:500"></div><div id="configId" style="font-size:12px;color:#5F6368"></div><div id="configFirebase" style="font-size:11px;color:#137333;margin-top:4px">● afrao-calls conectado</div></div>
+    </div>
+    <div style="margin-top:12px"><button class="btn" style="width:100%;background:#FCE8E6;color:#C5221F;height:44px;border-radius:22px" onclick="logout()">Sair da conta</button></div>
+    <div style="margin-top:10px"><button class="btn btn-o" style="width:100%" onclick="closeConfig()">Fechar</button></div>
+  </div>
+</div>
+
+<audio id="ringtone" loop preload="auto" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+<script>
+// === CONFIG FIREBASE REAL ===
+const firebaseConfig = {
+  apiKey: "AIzaSyDUrbO-hyxQ3uoLPm8anaT9G8LN_Xr8SoE",
+  authDomain: "afrao-calls.firebaseapp.com",
+  databaseURL: "https://afrao-calls-default-rtdb.firebaseio.com",
+  projectId: "afrao-calls",
+  storageBucket: "afrao-calls.firebasestorage.app",
+  messagingSenderId: "958809889151",
+  appId: "1:958809889151:web:121953401d12fa3ec7224a"
+};
+const VAPID_KEY = "[STRIPPED 87 bytes]";
+
+// === INIT FIREBASE COM TRY/CATCH PARA NÃO QUEBRAR LOGIN ===
+let db=null, messaging=null;
+try{
+  if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  if(firebase.messaging && firebase.messaging.isSupported && firebase.messaging.isSupported()) {
+    messaging = firebase.messaging();
+  }
+  document.getElementById('firebaseStatus').textContent='● afrao-calls conectado';
+  document.getElementById('firebaseStatus').style.color='#137333';
+}catch(e){
+  console.error('Firebase init error', e);
+  document.getElementById('firebaseStatus').textContent='● Firebase erro: '+e.message;
+  document.getElementById('debugLog').textContent = 'Erro Firebase: '+e.message;
+  // cria db mock para não quebrar login
+  db = { ref: ()=>({ set:()=>Promise.resolve(), update:()=>Promise.resolve(), remove:()=>Promise.resolve(), on:()=>{}, onDisconnect:()=>({update:()=>{}}), get:()=>Promise.resolve({val:()=>null}) }) };
+}
+
+// === HELPERS ===
+const $ = id=>document.getElementById(id);
+function sanitizeId(raw){
+  if(!raw) return '';
+  let s = raw.trim().toLowerCase();
+  s = s.replace(/[@.]/g,'-');
+  s = s.replace(/[^a-z0-9-]/g,'-');
+  s = s.replace(/-+/g,'-');
+  s = s.replace(/^-|-$/g,'');
+  return s;
+}
+function avatarLetter(n){ return (n||'?').trim().charAt(0).toUpperCase(); }
+function avatarColor(str){
+  let h=0; for(let i=0;i<str.length;i++) h=str.charCodeAt(i)+((h<<5)-h);
+  const cols=['#E8F0FE','#E6F4EA','#FEF7E0','#FCE8E6','#E8DEFF','#E0F2F1'];
+  return cols[Math.abs(h)%cols.length];
+}
+function showToast(msg,ms=3000){
+  const t=$('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.style.display='block';
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.style.display='none',ms);
+}
+function logDbg(m){ const el=$('debugLog'); if(el) el.textContent=m; console.log(m); }
+
+// === STATE ===
+let myOriginal = (()=>{ try{ return localStorage.getItem('telefone_familia_original')||'' }catch{ return '' } })();
+let myId = (()=>{ try{ return localStorage.getItem('telefone_familia_id')||'' }catch{ return '' } })();
+let myName = (()=>{ try{ return localStorage.getItem('telefone_familia_nome')||'' }catch{ return '' } })();
+let familia=[];
+try{ familia=JSON.parse(localStorage.getItem('telefone_familia_contatos')||'[]'); }catch{ familia=[]; }
+let peer=null, currentCall=null, dataConn=null, incomingData=null, callTimer=null, seconds=0, isMuted=false;
+
+// === LOGIN - CAUSA RAIZ DO BUG ANTERIOR ===
+// O bug era: 
+// 1. checkLoginBtn setava disabled=true e pointerEvents=none, mas o setInterval não rodava se Firebase desse erro e travava init()
+// 2. doLogin chamava db.ref() que se Firebase não conectou, dava exception e parava antes de esconder loginScreen
+// 3. PeerJS não carregava em HTTP (precisa HTTPS) e throw quebrava login
+// SOLUÇÃO: envolver tudo em try/catch, garantir que loginScreen hidden SEMPRE acontece primeiro, e botão nunca fica realmente disabled
+
+function checkLoginBtn(){
+  const i=$('loginInput');
+  const b=$('loginBtn');
+  if(!i||!b) return false;
+  const v=i.value.trim();
+  const ok=v.length>=2;
+  // NUNCA deixa disabled de verdade - só visual
+  b.disabled=false;
+  b.style.opacity= ok ? '1' : '0.5';
+  b.style.background= ok ? '#0B57D0' : '#E8EAED';
+  b.style.color= ok ? '#fff' : '#9AA0A6';
+  b.style.pointerEvents= ok ? 'auto' : 'none';
+  b.style.cursor= ok ? 'pointer' : 'default';
+  return ok;
+}
+
+function doLogin(original, name, sid, isRestore){
+  try{
+    logDbg('doLogin start '+original+' -> '+sid);
+    if(!original || !sid){
+      showToast('Digite um Gmail válido');
+      return;
+    }
+    myOriginal=original; myName=name||original.split('@')[0]; myId=sid;
+    try{
+      localStorage.setItem('telefone_familia_original', original);
+      localStorage.setItem('telefone_familia_id', sid);
+      localStorage.setItem('telefone_familia_nome', myName);
+      localStorage.setItem('telefone_familia_login_time', Date.now().toString());
+      sessionStorage.setItem('telefone_familia_original', original);
+      sessionStorage.setItem('telefone_familia_id', sid);
+    }catch(e){ logDbg('storage error '+e.message); }
+
+    // ESSENCIAL: esconde login ANTES de qualquer coisa que possa dar erro
+    const loginScreen=$('loginScreen');
+    const listScreen=$('listScreen');
+    if(loginScreen) loginScreen.classList.add('hidden');
+    if(listScreen) listScreen.classList.remove('hidden');
+
+    if($('myAvatar')){
+      $('myAvatar').textContent=avatarLetter(myName);
+      $('myAvatar').style.background=avatarColor(myName);
+    }
+    if($('configAvatar')){
+      $('configAvatar').textContent=avatarLetter(myName);
+      $('configAvatar').style.background=avatarColor(myName);
+    }
+    if($('configName')) $('configName').textContent=myName;
+    if($('configId')) $('configId').textContent=original;
+
+    // Firebase - não pode quebrar login
+    try{
+      if(db && db.ref){
+        db.ref('users/'+sid).set({original, name:myName, online:true, lastSeen:Date.now()}).catch(e=>logDbg('db set err '+e.message));
+        try{ db.ref('users/'+sid).onDisconnect().update({online:false, lastSeen:Date.now()}); }catch(e){}
+      }
+    }catch(e){ logDbg('firebase user error '+e.message); }
+
+    // Peer - não pode quebrar login
+    try{ setupPeer(sid); }catch(e){ logDbg('peer setup error '+e.message); }
+
+    // FCM - não pode quebrar login
+    try{ setupFCM(); }catch(e){ logDbg('fcm error '+e.message); }
+
+    // Calls listener
+    try{ setupCallListener(sid); }catch(e){ logDbg('callListener error '+e.message); }
+
+    renderContacts();
+    showToast('Conectado como '+original);
+    logDbg('doLogin ok');
+  }catch(err){
+    console.error('doLogin fatal', err);
+    logDbg('Erro login: '+err.message);
+    showToast('Erro ao entrar: '+err.message);
+    // mesmo com erro, garante que saiu da tela de login
+    try{
+      $('loginScreen').classList.add('hidden');
+      $('listScreen').classList.remove('hidden');
+    }catch(e){}
+  }
+}
+
+function setupPeer(id){
+  if(typeof Peer==='undefined'){
+    logDbg('PeerJS não carregou - verifique HTTPS');
+    showToast('PeerJS offline - use HTTPS');
+    $('statusText').textContent='PeerJS offline - use HTTPS (GitHub Pages)';
+    return;
+  }
+  try{ if(peer) peer.destroy(); }catch(e){}
+  try{
+    peer = new Peer(id, {config:{iceServers:[{urls:'stun:stun.l.google.com:19302'}]}});
+    peer.on('open', ()=>{ $('statusText').textContent='Conectado • '+myOriginal+' • afrao-calls pronto'; });
+    peer.on('connection', conn=>{
+      conn.on('data', data=>{
+        if(!data) return;
+        if(data.type==='incoming-call'){ incomingData=data; showIncoming(data.callerName||data.callerOriginal, data.callerOriginal, data.callerId); }
+        else if(data.type==='call-declined'){ handleRemoteDecline(data.byName||data.by); }
+        else if(data.type==='call-ended'){ endCall(false); }
+      });
+    });
+    peer.on('call', async call=>{
+      currentCall=call;
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+        call.answer(stream); setupCallEvents(call,true);
+      }catch(e){ call.answer(); setupCallEvents(call,true); }
+    });
+    peer.on('error', err=>{ logDbg('Peer error '+err.type); });
+  }catch(e){ logDbg('Peer new error '+e.message); }
+}
+
+function setupFCM(){
+  if(!messaging) return;
+  try{
+    Notification.requestPermission().then(perm=>{
+      if(perm==='granted'){
+        messaging.getToken({vapidKey:VAPID_KEY}).then(token=>{
+          if(token && db && db.ref){
+            try{
+              localStorage.setItem('fcmToken', token);
+              db.ref('tokens/'+myId).set({token, original:myOriginal, updated:Date.now()});
+              db.ref('users/'+myId+'/fcmToken').set(token);
+            }catch(e){}
+          }
+        }).catch(e=>logDbg('FCM token err '+e.message));
+      }
+    });
+    messaging.onMessage(payload=>{
+      const title=payload.notification?.title||'Família';
+      showIncoming(title, payload.notification?.body||'Chamada', payload.data?.callerId||'');
+    });
+  }catch(e){ logDbg('FCM setup err '+e.message); }
+}
+
+function setupCallListener(mySid){
+  if(!db || !db.ref) return;
+  try{
+    db.ref('calls/'+mySid).on('value', snap=>{
+      const data=snap.val();
+      if(!data) return;
+      if(data.status==='ringing' && data.callerId!==mySid){
+        if($('incomingScreen').classList.contains('hidden') && $('callScreen').classList.contains('hidden')){
+          showIncoming(data.callerName||data.callerOriginal, data.callerOriginal, data.callerId);
+        }
+      }
+    });
+    db.ref('calls/'+mySid+'/response').on('value', snap=>{
+      const data=snap.val();
+      if(!data) return;
+      if(data.type==='declined'){ handleRemoteDecline(data.byName||data.by); try{ db.ref('calls/'+mySid+'/response').remove(); }catch(e){} }
+    });
+  }catch(e){ logDbg('callListener err '+e.message); }
+}
+
+function showIncoming(name,sub,callerId){
+  if(!$('incomingScreen')) return;
+  $('incomingName').textContent=name||sub;
+  $('incomingSub').textContent=sub;
+  const av=$('incomingAvatar');
+  if(av){ av.textContent=avatarLetter(name||sub); av.style.background=avatarColor(name||sub); }
+  $('incomingScreen').classList.remove('hidden');
+  incomingData={callerName:name, callerOriginal:sub, callerId};
+  try{ $('ringtone').play(); }catch(e){}
+}
+
+function answerCall(){
+  try{ $('ringtone').pause(); }catch(e){}
+  const incoming=$('incomingScreen');
+  if(incoming) incoming.classList.add('hidden');
+  const callerId=incomingData?.callerId;
+  try{ if(db && db.ref) db.ref('calls/'+myId).remove(); }catch(e){}
+  if(callerId && db && db.ref){
+    try{
+      db.ref('calls/'+callerId+'/response').set({type:'accepted', by:myId, byName:myName, timestamp:Date.now()});
+      setTimeout(()=>{ try{ db.ref('calls/'+callerId+'/response').remove(); }catch(e){} },10000);
+    }catch(e){}
+  }
+  if(currentCall){
+    const cs=$('callScreen');
+    if(cs) cs.classList.remove('hidden');
+    if($('callName')) $('callName').textContent=incomingData?.callerName||incomingData?.callerOriginal||'Família';
+    if($('callAvatar')){ $('callAvatar').textContent=avatarLetter(incomingData?.callerName||incomingData?.callerOriginal); $('callAvatar').style.background=avatarColor(incomingData?.callerName||incomingData?.callerOriginal); }
+    if($('callStatus')) $('callStatus').textContent='Conectado';
+    startTimer();
+  }else if(callerId){
+    makeCallById(callerId, incomingData?.callerName||incomingData?.callerOriginal, true);
+  }
+}
+
+function declineCall(){
+  try{ $('ringtone').pause(); }catch(e){}
+  const callerId=incomingData?.callerId;
+  const inc=$('incomingScreen');
+  if(inc) inc.classList.add('hidden');
+  if(callerId){
+    try{
+      if(peer && peer.connect){
+        const conn=peer.connect(callerId);
+        conn.on('open', ()=>{ try{ conn.send({type:'call-declined', by:myId, byName:myName}); }catch(e){} setTimeout(()=>{ try{ conn.close(); }catch(e){} },500); });
+      }
+    }catch(e){}
+    try{
+      if(db && db.ref){
+        db.ref('calls/'+myId).remove();
+        db.ref('calls/'+callerId+'/response').set({type:'declined', by:myId, byName:myName, timestamp:Date.now()});
+        setTimeout(()=>{ try{ db.ref('calls/'+callerId+'/response').remove(); }catch(e){} },10000);
+      }
+    }catch(e){}
+  }else{
+    try{ if(db && db.ref) db.ref('calls/'+myId).remove(); }catch(e){}
+  }
+  if(currentCall){ try{ currentCall.close(); }catch(e){} currentCall=null; }
+  showToast('Chamada recusada');
+}
+
+function makeCall(c){ makeCallById(sanitizeId(c.id||c.original), c.name, false); }
+
+function makeCallById(destId, destName, isAnswer){
+  if(!destId) return;
+  const cs=$('callScreen');
+  if(cs) cs.classList.remove('hidden');
+  if($('callName')) $('callName').textContent=destName||destId;
+  const av=$('callAvatar');
+  if(av){ av.textContent=avatarLetter(destName||destId); av.style.background=avatarColor(destName||destId); }
+  if($('callStatus')) $('callStatus').textContent= isAnswer ? 'Conectando...' : 'Ligando...';
+  if($('callTimer')) $('callTimer').style.display='none';
+  seconds=0;
+
+  try{
+    if(db && db.ref) db.ref('calls/'+destId).set({callerId:myId, callerOriginal:myOriginal, callerName:myName, status:'ringing', timestamp:Date.now()});
+  }catch(e){}
+
+  try{
+    if(peer && peer.connect){
+      const conn=peer.connect(destId);
+      dataConn=conn;
+      conn.on('open', ()=>{ try{ conn.send({type:'incoming-call', callerId:myId, callerOriginal:myOriginal, callerName:myName}); }catch(e){} });
+      conn.on('data', d=>{ if(d.type==='call-declined') handleRemoteDecline(d.byName||destName); if(d.type==='call-ended') endCall(false); });
+    }
+  }catch(e){}
+
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    try{
+      const call=peer.call(destId, stream);
+      currentCall=call;
+      setupCallEvents(call,false);
+    }catch(e){ logDbg('call err '+e.message); }
+  }).catch(err=>{
+    try{
+      const call=peer.call(destId);
+      currentCall=call;
+      if(call) setupCallEvents(call,false);
+    }catch(e){}
+  });
+}
+
+function setupCallEvents(call, isIncoming){
+  try{
+    call.on('stream', remoteStream=>{
+      const audio=new Audio();
+      audio.srcObject=remoteStream;
+      audio.play().catch(()=>{});
+      if($('callStatus')) $('callStatus').textContent='Conectado';
+      if($('callTimer')) $('callTimer').style.display='block';
+      startTimer();
+      try{ if(db && db.ref) db.ref('calls/'+myId).remove(); }catch(e){}
+    });
+    call.on('close', ()=>{ if(!isIncoming) handleRemoteEnd(); else endCall(false); });
+    call.on('error', ()=>{ showToast('Chamada encerrada'); endCall(false); });
+  }catch(e){ logDbg('setupCallEvents err '+e.message); }
+}
+
+function handleRemoteDecline(byName){
+  const cs=$('callScreen');
+  const inc=$('incomingScreen');
+  if(cs) cs.classList.add('hidden');
+  if(inc) inc.classList.add('hidden');
+  if(currentCall){ try{ currentCall.close(); }catch(e){} currentCall=null; }
+  if(dataConn){ try{ dataConn.close(); }catch(e){} dataConn=null; }
+  try{ if(db && db.ref){ db.ref('calls/'+myId).remove(); db.ref('calls/'+myId+'/response').remove(); } }catch(e){}
+  showToast('Chamada recusada por '+(byName||'familiar'),3500);
+  stopTimer();
+}
+function handleRemoteEnd(){ endCall(false); showToast('Chamada encerrada'); }
+function endCall(notifyRemote){
+  const cs=$('callScreen');
+  const inc=$('incomingScreen');
+  if(cs) cs.classList.add('hidden');
+  if(inc) inc.classList.add('hidden');
+  const otherId = dataConn?.peer || incomingData?.callerId || '';
+  if(notifyRemote!==false){
+    try{
+      if(dataConn && dataConn.open) dataConn.send({type:'call-ended', by:myId});
+      else if(otherId && peer && peer.connect){
+        const conn=peer.connect(otherId);
+        conn.on('open', ()=>{ try{ conn.send({type:'call-ended', by:myId}); }catch(e){} setTimeout(()=>{ try{ conn.close(); }catch(e){} },300); });
+      }
+    }catch(e){}
+    if(otherId && db && db.ref){
+      try{
+        db.ref('calls/'+otherId+'/response').set({type:'ended', by:myId});
+        setTimeout(()=>{ try{ db.ref('calls/'+otherId+'/response').remove(); }catch(e){} },5000);
+      }catch(e){}
+    }
+  }
+  if(currentCall){ try{ currentCall.close(); }catch(e){} currentCall=null; }
+  if(dataConn){ try{ dataConn.close(); }catch(e){} dataConn=null; }
+  incomingData=null;
+  try{ if(db && db.ref) db.ref('calls/'+myId).remove(); }catch(e){}
+  stopTimer();
+}
+function startTimer(){
+  stopTimer();
+  seconds=0;
+  const el=$('callTimer');
+  if(el){ el.textContent='00:00'; el.style.display='block'; }
+  callTimer=setInterval(()=>{
+    seconds++;
+    const m=String(Math.floor(seconds/60)).padStart(2,'0');
+    const s=String(seconds%60).padStart(2,'0');
+    const e=$('callTimer');
+    if(e) e.textContent=m+':'+s;
+  },1000);
+}
+function stopTimer(){ if(callTimer){ clearInterval(callTimer); callTimer=null; } const e=$('callTimer'); if(e) e.style.display='none'; }
+function toggleMute(){ isMuted=!isMuted; const b=$('muteBtn'); if(b) b.style.background=isMuted?'#EA4335':'#3C4043'; }
+
+function renderContacts(){
+  const list=$('contactsList');
+  if(!list) return;
+  list.innerHTML='';
+  if(!familia||familia.length===0){ const es=$('emptyState'); if(es) es.style.display='flex'; return; }
+  const es=$('emptyState');
+  if(es) es.style.display='none';
+  familia.forEach(c=>{
+    const div=document.createElement('div');
+    div.className='contact';
+    const av=document.createElement('div');
+    av.className='avatar';
+    av.textContent=avatarLetter(c.name);
+    av.style.background=avatarColor(c.name);
+    const info=document.createElement('div');
+    info.className='c-info';
+    info.innerHTML=`<div class="c-name">${c.name}</div><div class="c-sub">${c.original}</div>`;
+    const btn=document.createElement('button');
+    btn.className='call-btn';
+    btn.textContent='📞';
+    btn.onclick=(e)=>{ e.stopPropagation(); makeCall(c); };
+    div.onclick=()=>makeCall(c);
+    div.appendChild(av); div.appendChild(info); div.appendChild(btn);
+    list.appendChild(div);
+  });
+}
+function openAdd(){ const m=$('addModal'); if(m) m.style.display='flex'; const inp=$('addName'); if(inp) inp.focus(); }
+function closeAdd(){ const m=$('addModal'); if(m) m.style.display='none'; const a=$('addName'); const b=$('addId'); if(a) a.value=''; if(b) b.value=''; }
+function saveFamily(){
+  const nameEl=$('addName');
+  const idEl=$('addId');
+  const name=nameEl ? nameEl.value.trim() : '';
+  const id=idEl ? idEl.value.trim() : '';
+  if(!name||!id){ showToast('Preencha nome e Gmail/@'); return; }
+  const entry={name, original:id, id:sanitizeId(id), added:Date.now()};
+  familia.push(entry);
+  try{ localStorage.setItem('telefone_familia_contatos', JSON.stringify(familia)); }catch(e){}
+  closeAdd(); renderContacts(); showToast(name+' adicionado');
+}
+function openConfig(){ const m=$('configModal'); if(m) m.style.display='flex'; }
+function closeConfig(){ const m=$('configModal'); if(m) m.style.display='none'; }
+function logout(){
+  if(!confirm('Sair da conta?')) return;
+  try{ if(db && db.ref) db.ref('users/'+myId).update({online:false}); }catch(e){}
+  try{ if(db && db.ref) db.ref('calls/'+myId).remove(); }catch(e){}
+  try{
+    localStorage.removeItem('telefone_familia_original');
+    localStorage.removeItem('telefone_familia_id');
+    localStorage.removeItem('telefone_familia_nome');
+    sessionStorage.clear();
+  }catch(e){}
+  if(peer){ try{ peer.destroy(); }catch(e){} }
+  location.reload();
+}
+
+// === INIT COM PROTEÇÃO TOTAL ===
+function init(){
+  try{
+    const loginInput=$('loginInput');
+    const nameInput=$('nameInput');
+    const loginBtn=$('loginBtn');
+    const configBtn=$('configBtn');
+    if(!loginInput || !loginBtn){ logDbg('init: elementos não encontrados'); return; }
+    loginInput.value=myOriginal||'';
+    if(nameInput) nameInput.value=myName||'';
+    checkLoginBtn();
+
+    const onInput=()=>{ checkLoginBtn(); };
+    loginInput.addEventListener('input', onInput);
+    loginInput.addEventListener('keyup', onInput);
+    loginInput.addEventListener('change', onInput);
+    loginInput.addEventListener('paste', ()=>setTimeout(onInput, 50));
+    if(nameInput) nameInput.addEventListener('input', onInput);
+
+    loginInput.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        if(checkLoginBtn()){
+          const orig=loginInput.value.trim();
+          const name=nameInput ? nameInput.value.trim() : '';
+          const sid=sanitizeId(orig);
+          doLogin(orig, name||orig.split('@')[0], sid, false);
+        }
+      }
+    });
+    if(nameInput){
+      nameInput.addEventListener('keydown', (e)=>{
+        if(e.key==='Enter'){
+          e.preventDefault();
+          if(checkLoginBtn()){
+            const orig=loginInput.value.trim();
+            const name=nameInput.value.trim();
+            const sid=sanitizeId(orig);
+            doLogin(orig, name||orig.split('@')[0], sid, false);
+          }
+        }
+      });
+    }
+
+    // Botão com duplo fallback
+    if(loginBtn){
+      loginBtn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const orig=loginInput.value.trim();
+        const name=nameInput ? nameInput.value.trim() : '';
+        const sid=sanitizeId(orig);
+        logDbg('click Entrar '+orig);
+        if(orig.length<2){ showToast('Digite seu Gmail'); return; }
+        doLogin(orig, name||orig.split('@')[0], sid, false);
+      });
+      // fallback touch
+      loginBtn.addEventListener('touchend', (e)=>{
+        e.preventDefault();
+        loginBtn.click();
+      });
+    }
+
+    if(configBtn) configBtn.onclick=openConfig;
+
+    // Se já tem login salvo, entra direto
+    if(myOriginal && myId){
+      logDbg('auto-login '+myOriginal);
+      doLogin(myOriginal, myName, myId, true);
+    }
+
+    // checks periódicos
+    setTimeout(checkLoginBtn, 100);
+    setInterval(checkLoginBtn, 800);
+
+    renderContacts();
+    logDbg('init ok');
+  }catch(err){
+    console.error('init error', err);
+    const dbg=$('debugLog');
+    if(dbg) dbg.textContent='Erro init: '+err.message;
+    showToast('Erro init: '+err.message);
+  }
+}
+
+// Service Worker com Firebase
+if('serviceWorker' in navigator){
+  try{
+    const swCode = `
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js','https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+const firebaseConfig = ${JSON.stringify(firebaseConfig)};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+let messaging=null;
+try{ messaging=firebase.messaging(); }catch(e){}
+if(messaging){
+  messaging.onBackgroundMessage(payload=>{
+    self.registration.showNotification(payload.notification?.title||'Chamada da Família', {
+      body: payload.notification?.body||'Você está recebendo uma chamada...',
+      icon:'https://cdn-icons-png.flaticon.com/512/724/724664.png',
+      badge:'https://cdn-icons-png.flaticon.com/512/724/724664.png',
+      tag:'incoming-call',
+      requireInteraction:true,
+      vibrate:[300,100,300,100,300],
+      data: payload.data||{},
+      actions:[{action:'answer', title:'Atender'}, {action:'decline', title:'Recusar'}]
+    });
+  });
+}
+self.addEventListener('notificationclick', event=>{
+  event.notification.close();
+  const data=event.notification.data||{};
+  event.waitUntil(self.clients.matchAll().then(clients=>{
+    if(clients.length>0){ clients[0].focus(); }
+    else { self.clients.openWindow('./'); }
+  }));
+});
+`;
+    const blob=new Blob([swCode], {type:'application/javascript'});
+    const swUrl=URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl, {scope:'./'}).then(reg=>{
+      console.log('SW ok');
+    }).catch(e=>console.log('SW fail', e));
+  }catch(e){ console.log('SW error', e); }
+}
+
+window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('load', ()=>{ setTimeout(()=>{ checkLoginBtn(); if(myOriginal && myId && $('loginScreen') && !$('loginScreen').classList.contains('hidden')){ doLogin(myOriginal, myName, myId, true); } }, 500); });
+if(document.readyState!=='loading') init();
+</script>
+</body>
+</html>
